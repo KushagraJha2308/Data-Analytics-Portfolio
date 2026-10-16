@@ -3,12 +3,12 @@ import matplotlib.pyplot as plt
 
 from . import config
 
-# Colour follows the entity: a Show is always blue, a Movie is always orange.
 BLUE, ORANGE, AQUA = "#2a78d6", "#eb6834", "#1baf7a"
 MUTED = "#898781"          # de-emphasised marks, axis labels
 INK, INK_SECONDARY = "#0b0b0b", "#52514e"
 SURFACE, GRID, AXIS = "#fcfcfb", "#e1e0d9", "#c3c2b7"
-TYPE_COLORS = {"Show": BLUE, "Movie": ORANGE}
+# Colour follows the entity in every chart.
+MODEL_COLORS = {"Gradient boosting": BLUE, "Random forest": ORANGE, "Logistic regression": AQUA}
 
 
 def apply_style() -> None:

@@ -1,76 +1,91 @@
 -- =============================================================================
 -- 03_data_quality_checks.sql  |  Automated checks run after every load
--- Each check returns one row: name, severity, number of offending rows, note.
--- FAIL = the model is wrong and must not be used.  WARN = known source quirk.
+-- FAIL = the data is wrong and must not be used.  WARN = known and monitored.
 -- =============================================================================
 
 -- name: data_quality_checks
-SELECT 'fact_duplicate_key' AS check_name, 'FAIL' AS severity,
+SELECT 'duplicate_symbol_date' AS check_name, 'FAIL' AS severity,
        COUNT(*) AS offending_rows,
-       'More than one row for a title in a period' AS note
-FROM (SELECT period_id, title_id FROM fact_engagement GROUP BY 1, 2 HAVING COUNT(*) > 1)
+       'More than one price row for a stock on a day' AS note
+FROM (SELECT symbol, date FROM fact_daily_price GROUP BY 1, 2 HAVING COUNT(*) > 1)
 
 UNION ALL
-SELECT 'fact_orphan_title', 'FAIL', COUNT(*),
-       'Fact rows whose title_id is missing from dim_title'
-FROM fact_engagement f
-LEFT JOIN dim_title t ON t.title_id = f.title_id
-WHERE t.title_id IS NULL
+SELECT 'price_without_stock', 'FAIL', COUNT(*),
+       'Price rows whose symbol is missing from dim_stock'
+FROM fact_daily_price p
+LEFT JOIN dim_stock s ON s.symbol = p.symbol
+WHERE s.symbol IS NULL
 
 UNION ALL
-SELECT 'dim_title_duplicate_natural_key', 'FAIL', COUNT(*),
-       'content_type + title + release_date should be unique'
-FROM (SELECT content_type, title, release_date FROM dim_title GROUP BY 1, 2, 3 HAVING COUNT(*) > 1)
+SELECT 'price_on_non_trading_day', 'FAIL', COUNT(*),
+       'Price rows on a date the index did not trade'
+FROM fact_daily_price p
+LEFT JOIN dim_date d ON d.date = p.date
+WHERE d.date IS NULL
 
 UNION ALL
-SELECT 'release_after_period_end', 'FAIL', COUNT(*),
-       'A title cannot be watched before it is released'
-FROM vw_engagement e
-JOIN dim_period p ON p.period_id = e.period_id
-WHERE e.release_date > p.period_end
+SELECT 'close_outside_high_low', 'FAIL', COUNT(*),
+       'Close must lie between the day low and the day high'
+FROM fact_daily_price
+WHERE close > high * 1.000001 OR close < low * 0.999999
 
 UNION ALL
-SELECT 'new_release_days_out_of_range', 'FAIL', COUNT(*),
-       'days_available must be between 1 and the length of the period'
-FROM fact_engagement f
-JOIN dim_period p ON p.period_id = f.period_id
-WHERE f.days_available < 1 OR f.days_available > p.days_in_period
+SELECT 'return_missing_after_first_day', 'FAIL', COUNT(*),
+       'ret_1d may only be NULL on a stock''s first trading day'
+FROM fact_daily_price p
+JOIN dim_stock s ON s.symbol = p.symbol
+WHERE p.ret_1d IS NULL AND p.date > s.first_date
 
 UNION ALL
-SELECT 'views_below_reporting_threshold', 'FAIL', COUNT(*),
-       'Netflix only lists titles that round to at least 100K views'
-FROM fact_engagement
-WHERE views < 100000
+SELECT 'feature_row_without_price', 'FAIL', COUNT(*),
+       'Every feature row must come from a price row'
+FROM fact_features f
+LEFT JOIN fact_daily_price p ON p.symbol = f.symbol AND p.date = f.date
+WHERE p.symbol IS NULL
 
 UNION ALL
-SELECT 'runtime_not_reported', 'WARN', COUNT(*),
-       'Runtime published as * (mostly titles still releasing episodes)'
-FROM fact_engagement
-WHERE runtime_minutes IS NULL
+SELECT 'target_not_balanced', 'FAIL',
+       CASE WHEN ABS(AVG(target) - 0.5) > 0.02 THEN 1 ELSE 0 END,
+       'Target is "beat the median stock", so about half the rows must be 1'
+FROM fact_features
+WHERE target IS NOT NULL
 
 UNION ALL
-SELECT 'release_date_missing', 'WARN', COUNT(*),
-       'No Netflix premiere date: treated as licensed content'
-FROM vw_engagement
-WHERE release_date IS NULL
+SELECT 'stocks_listed_after_start', 'WARN', COUNT(*),
+       'Stocks with a shorter history than the index (newer listings)'
+FROM dim_stock
+WHERE first_date > (SELECT MIN(date) FROM dim_date)
 
 UNION ALL
--- Netflix defines views = hours viewed / runtime. Restricted to titles above 1M views,
--- where rounding to the nearest 100K cannot explain a gap of more than 10%.
-SELECT 'views_formula_mismatch_over_10pct', 'WARN', COUNT(*),
-       'views differs from hours / runtime by more than 10% (titles with 1M+ views)'
-FROM fact_engagement
-WHERE runtime_minutes IS NOT NULL
-  AND views >= 1000000
-  AND ABS(views / (hours_viewed / (runtime_minutes / 60.0)) - 1) > 0.10
+SELECT 'stock_days_missing_vs_index', 'WARN',
+       COALESCE(SUM(expected.days - s.trading_days), 0),
+       'Trading days between first and last date with no price row (halts, provider gaps)'
+FROM dim_stock s
+JOIN (SELECT s2.symbol, COUNT(*) AS days
+      FROM dim_stock s2
+      JOIN dim_date d ON d.date BETWEEN s2.first_date AND s2.last_date
+      GROUP BY s2.symbol) expected ON expected.symbol = s.symbol
 
 UNION ALL
-SELECT 'global_flag_changed_between_periods', 'WARN', COUNT(*),
-       'Titles whose Available Globally flag differs across reports'
-FROM (SELECT title_id FROM fact_engagement GROUP BY 1 HAVING COUNT(DISTINCT available_globally) > 1)
+SELECT 'ticker_changed_since_brief', 'WARN', COUNT(*),
+       'Symbols in the brief that now trade under a different ticker'
+FROM dim_stock
+WHERE ticker_changed = 1
 
 UNION ALL
-SELECT 'show_without_season_number', 'WARN', COUNT(*),
-       'Show titles where no season could be parsed from the title text'
-FROM dim_title
-WHERE content_type = 'Show' AND season_number IS NULL;
+SELECT 'corporate_action_back_adjusted', 'WARN', COUNT(*),
+       'Demerger price breaks removed by back-adjustment'
+FROM fact_daily_price
+WHERE corporate_action = 1
+
+UNION ALL
+SELECT 'daily_move_above_25pct', 'WARN', COUNT(*),
+       'Large genuine moves kept in the data (COVID crash, bank recapitalisation, Vodafone Idea)'
+FROM fact_daily_price
+WHERE ABS(ret_1d) > 0.25
+
+UNION ALL
+SELECT 'target_not_yet_known', 'WARN', COUNT(*),
+       'Latest feature rows whose 5-day forward return has not happened yet'
+FROM fact_features
+WHERE target IS NULL;

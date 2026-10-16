@@ -1,40 +1,31 @@
-"""Central configuration: paths, reporting periods and source files."""
+"""Central configuration: paths, data range and modelling parameters."""
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+REFERENCE_DIR = ROOT / "data" / "reference"
 RAW_DIR = ROOT / "data" / "raw"
 PROCESSED_DIR = ROOT / "data" / "processed"
 SQL_DIR = ROOT / "sql"
 REPORTS_DIR = ROOT / "reports"
 FIGURES_DIR = REPORTS_DIR / "figures"
 SQL_OUTPUT_DIR = REPORTS_DIR / "sql_outputs"
-DB_PATH = PROCESSED_DIR / "netflix_engagement.db"
 
-# Netflix publishes one engagement report per half-year.
-# period_id is a sortable integer (YYYYH) so that "previous period" is a simple LAG.
-PERIODS = [
-    {
-        "period_id": 20251,
-        "period_label": "2025 H1",
-        "period_start": "2025-01-01",
-        "period_end": "2025-06-30",
-        "source_file": "netflix_what_we_watched_2025_h1.xlsx",
-    },
-    {
-        "period_id": 20252,
-        "period_label": "2025 H2",
-        "period_start": "2025-07-01",
-        "period_end": "2025-12-31",
-        "source_file": "netflix_what_we_watched_2025_h2.xlsx",
-    },
-    {
-        "period_id": 20261,
-        "period_label": "2026 H1",
-        "period_start": "2026-01-01",
-        "period_end": "2026-06-30",
-        "source_file": "netflix_what_we_watched_2026_h1.xlsx",
-    },
-]
+UNIVERSE_FILE = REFERENCE_DIR / "universe.csv"
+RAW_PRICES_FILE = RAW_DIR / "prices_raw.csv"
+RAW_INDEX_FILE = RAW_DIR / "nifty50_raw.csv"
+DB_PATH = PROCESSED_DIR / "nse_market.db"
 
-SHEETS = {"Shows": "Show", "Movies": "Movie"}
-RAW_COLUMNS = ["title", "available_globally", "release_date", "hours_viewed", "runtime", "views"]
+# Data range. END_DATE is fixed so that results in the README can be reproduced exactly.
+START_DATE = "2016-01-01"
+END_DATE = "2026-10-01"
+INDEX_TICKER = "^NSEI"          # NIFTY 50
+
+# A daily move larger than this is checked as a possible unadjusted corporate action.
+SUSPECT_JUMP = 0.25
+
+# Modelling
+HORIZON = 5                     # predict the next 5 trading days (one week)
+FIRST_TEST_YEAR = 2021          # walk-forward: train on everything before, test year by year
+TOP_K = 10                      # stocks held by the strategy
+COST_PER_TRADE = 0.001          # 0.10% of traded value, charged on every buy and every sell
+RANDOM_STATE = 42

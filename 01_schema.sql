@@ -1,68 +1,64 @@
 -- =============================================================================
--- 01_schema.sql  |  Star schema for Netflix engagement reporting
--- Grain of fact_engagement: one row per title per half-year reporting period.
+-- 01_schema.sql  |  Star schema for NSE daily market data
+-- Grain of fact_daily_price: one row per stock per trading day.
 -- =============================================================================
 PRAGMA foreign_keys = ON;
 
-CREATE TABLE dim_period (
-    period_id       INTEGER PRIMARY KEY,      -- YYYYH, e.g. 20261 = 2026 H1
-    period_label    TEXT    NOT NULL UNIQUE,
-    period_start    TEXT    NOT NULL,
-    period_end      TEXT    NOT NULL,
-    days_in_period  INTEGER NOT NULL,
-    period_seq      INTEGER NOT NULL UNIQUE   -- 1, 2, 3 ... for period-over-period joins
-);
-
-CREATE TABLE dim_title (
-    title_id          INTEGER PRIMARY KEY,
-    content_type      TEXT    NOT NULL CHECK (content_type IN ('Show', 'Movie')),
-    title             TEXT    NOT NULL,
-    release_date      TEXT,                   -- NULL = licensed title (no Netflix premiere date)
-    title_english     TEXT    NOT NULL,
-    title_native      TEXT,
-    series_name       TEXT,                   -- franchise, e.g. 'Bridgerton'
-    season_number     INTEGER,
-    is_limited_series INTEGER NOT NULL CHECK (is_limited_series IN (0, 1)),
-    is_live_event     INTEGER NOT NULL CHECK (is_live_event IN (0, 1)),      -- runtime footnoted 'H:MM*'
-    language_group   TEXT    NOT NULL,       -- inferred from the script of the native title
-    is_non_english    INTEGER NOT NULL CHECK (is_non_english IN (0, 1)),
-    title_origin      TEXT    NOT NULL CHECK (title_origin IN ('Netflix release', 'Licensed / undated')),
-    release_year      INTEGER
+CREATE TABLE dim_stock (
+    symbol          TEXT PRIMARY KEY,         -- symbol as given in the project brief
+    yahoo_ticker    TEXT NOT NULL UNIQUE,     -- current ticker at the data provider
+    sector          TEXT NOT NULL,
+    segment_code    TEXT NOT NULL,
+    first_date      TEXT NOT NULL,            -- first trading day available (listing date for newer stocks)
+    last_date       TEXT NOT NULL,
+    trading_days    INTEGER NOT NULL,
+    ticker_changed  INTEGER NOT NULL CHECK (ticker_changed IN (0, 1))
 );
 
 CREATE TABLE dim_date (
-    date          TEXT PRIMARY KEY,
+    date          TEXT PRIMARY KEY,           -- trading days only
     year          INTEGER NOT NULL,
-    quarter       TEXT    NOT NULL,
+    quarter       TEXT NOT NULL,
     month_number  INTEGER NOT NULL,
-    month_name    TEXT    NOT NULL,
-    year_month    TEXT    NOT NULL,
-    half_year     TEXT    NOT NULL
+    month_name    TEXT NOT NULL,
+    year_month    TEXT NOT NULL,
+    weekday       TEXT NOT NULL
 );
 
-CREATE TABLE fact_engagement (
-    period_id          INTEGER NOT NULL REFERENCES dim_period (period_id),
-    title_id           INTEGER NOT NULL REFERENCES dim_title (title_id),
-    content_type       TEXT    NOT NULL,
-    available_globally INTEGER NOT NULL CHECK (available_globally IN (0, 1)),
-    hours_viewed       INTEGER NOT NULL CHECK (hours_viewed > 0),
-    views              INTEGER NOT NULL CHECK (views > 0),
-    runtime_minutes    REAL,                  -- NULL where Netflix reported '*'
-    release_cohort     TEXT    NOT NULL CHECK (release_cohort IN ('New release', 'Netflix catalogue', 'Licensed / undated')),
-    days_available     INTEGER NOT NULL,      -- days the title could be watched inside the period
-    views_per_day      REAL    NOT NULL,
-    netflix_rank       INTEGER NOT NULL,      -- position in the source sheet
-    hours_decile       INTEGER NOT NULL CHECK (hours_decile BETWEEN 1 AND 10),  -- 1 = top 10% by hours
-    PRIMARY KEY (period_id, title_id)
+CREATE TABLE fact_index (
+    date          TEXT PRIMARY KEY REFERENCES dim_date (date),
+    nifty_close   REAL NOT NULL,
+    nifty_ret_1d  REAL
 );
 
--- Netflix's aggregate line for titles under 50K views (published from 2025 H2).
-CREATE TABLE fact_other_viewing (
-    period_id     INTEGER NOT NULL REFERENCES dim_period (period_id),
-    content_type  TEXT    NOT NULL,
-    hours_viewed  INTEGER NOT NULL,
-    PRIMARY KEY (period_id, content_type)
+CREATE TABLE fact_daily_price (
+    date              TEXT NOT NULL REFERENCES dim_date (date),
+    symbol            TEXT NOT NULL REFERENCES dim_stock (symbol),
+    open              REAL NOT NULL CHECK (open > 0),
+    high              REAL NOT NULL,
+    low               REAL NOT NULL,
+    close             REAL NOT NULL CHECK (close > 0),
+    adj_close         REAL NOT NULL CHECK (adj_close > 0),   -- adjusted for splits, dividends, demergers
+    volume            INTEGER NOT NULL CHECK (volume > 0),
+    turnover_cr       REAL NOT NULL,                         -- close x volume, rupees crore
+    ret_1d            REAL,                                  -- daily return on adj_close; NULL on first day
+    corporate_action  INTEGER NOT NULL CHECK (corporate_action IN (0, 1)),
+    PRIMARY KEY (symbol, date),
+    CHECK (high >= low)
 );
 
-CREATE INDEX idx_fact_title  ON fact_engagement (title_id);
-CREATE INDEX idx_title_series ON dim_title (series_name, season_number);
+-- One row per stock per day: model inputs and the forward-looking target.
+CREATE TABLE fact_features (
+    date            TEXT NOT NULL,
+    symbol          TEXT NOT NULL,
+    sector          TEXT NOT NULL,
+    ret_1d REAL, ret_5d REAL, ret_20d REAL, ret_60d REAL, mom_12_1 REAL,
+    vol_20d REAL, volume_ratio REAL, rsi_14 REAL, macd_hist REAL, bb_pos REAL,
+    dist_52w_high REAL, dist_52w_low REAL, trend_50_200 REAL, range_10d REAL,
+    sector_rel_20d REAL, mkt_ret_20d REAL, mkt_vol_20d REAL,
+    fwd_ret         REAL,                     -- return over the next 5 trading days (NULL for the last 5)
+    target          REAL,                     -- 1 if fwd_ret beat the median stock that day
+    PRIMARY KEY (symbol, date)
+);
+
+CREATE INDEX idx_price_date ON fact_daily_price (date);

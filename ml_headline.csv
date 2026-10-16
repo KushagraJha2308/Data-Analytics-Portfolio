@@ -1,0 +1,2 @@
+﻿best_model,auc,top10_hit_rate_pct,mean_ic,ic_t_stat,out_of_sample_predictions,return_after_costs_pct,return_before_costs_pct,benchmark_return_pct,breakeven_cost_pct,beats_random_pct,weekly_turnover_pct,auc_shuffled_split,auc_time_split
+Gradient boosting,0.5095631167234332,51.381527807222106,0.019427163900487012,0.7837013224056772,75099,20.948641936223233,28.37036065885108,22.172689933610812,0.08326326539539058,96.2,59.293286219081274,0.7430534474374518,0.4983901410420456

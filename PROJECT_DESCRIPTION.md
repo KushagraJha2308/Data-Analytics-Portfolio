@@ -1,10 +1,10 @@
 # Project description
 
-**Netflix Engagement Analysis: What Drives 289B Viewing Hours**
+**NSE Stock Selection with Machine Learning**
 
-Analysed 3 official Netflix engagement reports (50,000 titles). Built a Python ETL pipeline into a SQL star schema, wrote 14 window-function SQL queries and a Power BI dashboard. Found that 43% of viewing must be replaced every half-year, licensed titles drive half of all hours, and a new season lifts earlier seasons by a median 59%.
+Built a machine-learning pipeline on 10 years of prices for 54 NSE stocks (139,000 rows), with 17 engineered features, 3 classifiers and walk-forward validation. Showed that a shuffled split inflates AUC from 0.50 to 0.74 through data leakage. Backtest: 28.4% a year before costs against a 22.2% benchmark, and 20.9% after costs.
 
-**Skills Demonstrated:** SQL, Python (Pandas), Power BI (DAX), Data Modelling, Statistical Testing
+**Skills Demonstrated:** Python, scikit-learn, SQL, Feature Engineering, Power BI
 
 ---
 
@@ -12,5 +12,5 @@ Analysed 3 official Netflix engagement reports (50,000 titles). Built a Python E
 
 Paste into the repository page: gear icon next to **About**.
 
-- **Description:** Netflix engagement analysis: Python ETL, SQL star schema, statistical testing and a Power BI dashboard on 50,000 titles and 289B viewing hours.
-- **Topics:** data-analysis, sql, python, pandas, power-bi, statistics, etl
+- **Description:** Machine learning on 10 years of NSE stock prices: 17 engineered features, walk-forward validation, data-leakage test and a cost-aware backtest.
+- **Topics:** machine-learning, scikit-learn, python, sql, finance, backtesting, power-bi

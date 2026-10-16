@@ -1,52 +1,42 @@
 -- =============================================================================
--- 02_views.sql  |  Reusable semantic layer on top of the star schema
+-- 02_views.sql  |  Reusable views on top of the star schema
 -- =============================================================================
 
--- Denormalised view: every analysis query starts here instead of repeating joins.
-CREATE VIEW vw_engagement AS
+-- Daily prices with stock attributes and calendar fields: the start of most queries.
+CREATE VIEW vw_daily AS
 SELECT
-    f.period_id,
-    p.period_label,
-    p.period_seq,
-    f.title_id,
-    t.title,
-    t.title_english,
-    f.content_type,
-    t.series_name,
-    t.season_number,
-    t.is_limited_series,
-    t.is_live_event,
-    t.language_group,
-    t.is_non_english,
-    t.title_origin,
-    t.release_date,
-    f.release_cohort,
-    f.available_globally,
-    f.hours_viewed,
-    f.views,
-    f.runtime_minutes,
-    f.days_available,
-    f.views_per_day
-FROM fact_engagement f
-JOIN dim_title  t ON t.title_id  = f.title_id
-JOIN dim_period p ON p.period_id = f.period_id;
+    p.date,
+    d.year,
+    d.month_number,
+    d.month_name,
+    d.year_month,
+    p.symbol,
+    s.sector,
+    p.open, p.high, p.low, p.close, p.adj_close,
+    p.volume,
+    p.turnover_cr,
+    p.ret_1d,
+    p.corporate_action
+FROM fact_daily_price p
+JOIN dim_stock s ON s.symbol = p.symbol
+JOIN dim_date  d ON d.date   = p.date;
 
--- One row per title per period with the previous period's numbers alongside.
--- A title missing from the previous report has NULL prev_* values.
-CREATE VIEW vw_title_period_change AS
+-- Moving averages and 52-week range per stock, computed with window frames.
+-- 252 trading days is about one year.
+CREATE VIEW vw_technical AS
 SELECT
-    cur.period_id,
-    cur.period_label,
-    cur.title_id,
-    cur.title,
-    cur.content_type,
-    cur.release_cohort,
-    cur.views          AS views,
-    prev.views         AS prev_views,
-    cur.hours_viewed   AS hours_viewed,
-    prev.hours_viewed  AS prev_hours_viewed,
-    prev.release_cohort AS prev_release_cohort
-FROM vw_engagement cur
-LEFT JOIN vw_engagement prev
-       ON prev.title_id   = cur.title_id
-      AND prev.period_seq = cur.period_seq - 1;
+    date,
+    symbol,
+    sector,
+    close,
+    adj_close,
+    volume,
+    ret_1d,
+    COUNT(*)        OVER w200 AS days_of_history,
+    AVG(adj_close)  OVER (PARTITION BY symbol ORDER BY date ROWS BETWEEN 49 PRECEDING AND CURRENT ROW)  AS sma_50,
+    AVG(adj_close)  OVER w200 AS sma_200,
+    AVG(volume)     OVER (PARTITION BY symbol ORDER BY date ROWS BETWEEN 19 PRECEDING AND CURRENT ROW)  AS avg_volume_20d,
+    MAX(adj_close)  OVER (PARTITION BY symbol ORDER BY date ROWS BETWEEN 251 PRECEDING AND CURRENT ROW) AS high_52w,
+    MIN(adj_close)  OVER (PARTITION BY symbol ORDER BY date ROWS BETWEEN 251 PRECEDING AND CURRENT ROW) AS low_52w
+FROM vw_daily
+WINDOW w200 AS (PARTITION BY symbol ORDER BY date ROWS BETWEEN 199 PRECEDING AND CURRENT ROW);

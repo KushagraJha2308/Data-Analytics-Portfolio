@@ -1,0 +1,3 @@
+﻿sort_order,method,auc
+1,Shuffled split (tutorial method),0.7430534474374518
+2,Time-ordered split (honest method),0.4983901410420456
