@@ -1,0 +1,12 @@
+﻿check_name,severity,offending_rows,note
+fact_duplicate_key,FAIL,0,More than one row for a title in a period
+fact_orphan_title,FAIL,0,Fact rows whose title_id is missing from dim_title
+dim_title_duplicate_natural_key,FAIL,0,content_type + title + release_date should be unique
+release_after_period_end,FAIL,0,A title cannot be watched before it is released
+new_release_days_out_of_range,FAIL,0,days_available must be between 1 and the length of the period
+views_below_reporting_threshold,FAIL,0,Netflix only lists titles that round to at least 100K views
+runtime_not_reported,WARN,537,Runtime published as * (mostly titles still releasing episodes)
+release_date_missing,WARN,32783,No Netflix premiere date: treated as licensed content
+views_formula_mismatch_over_10pct,WARN,2,views differs from hours / runtime by more than 10% (titles with 1M+ views)
+global_flag_changed_between_periods,WARN,158,Titles whose Available Globally flag differs across reports
+show_without_season_number,WARN,1782,Show titles where no season could be parsed from the title text
