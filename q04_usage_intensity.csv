@@ -1,0 +1,33 @@
+﻿state,region,txn_per_100_beneficiaries,national_rank,region_rank,intensity_quartile
+Delhi,North,202.9,1,1,1
+Bihar,East,155.7,2,1,1
+Haryana,North,146.3,3,2,1
+Telangana,South,115.2,4,1,1
+Kerala,South,109.9,5,2,1
+Punjab,North,105.2,6,3,1
+Andhra Pradesh,South,101.9,7,3,1
+Lakshadweep,South,76.0,8,4,1
+Rajasthan,West,73.0,9,1,2
+Dadra and Nagar Haveli and Daman and Diu,West,66.3,10,2,2
+Andaman and Nicobar Islands,South,34.5,11,5,2
+Madhya Pradesh,Central,34.0,12,1,2
+Karnataka,South,29.3,13,6,2
+Uttar Pradesh,North,29.0,14,4,2
+Maharashtra,West,22.8,15,3,2
+Jharkhand,East,18.1,16,2,2
+Tripura,North-East,16.9,17,1,3
+Goa,West,16.1,18,4,3
+Tamil Nadu,South,15.3,19,7,3
+Jammu and Kashmir,North,14.6,20,5,3
+Chhattisgarh,Central,12.5,21,2,3
+Ladakh,North,8.1,22,6,3
+Gujarat,West,7.6,23,5,3
+Uttarakhand,North,7.2,24,7,3
+West Bengal,East,6.3,25,3,4
+Mizoram,North-East,4.5,26,2,4
+Odisha,East,4.5,27,4,4
+Nagaland,North-East,4.1,28,3,4
+Sikkim,North-East,2.6,29,4,4
+Assam,North-East,1.3,30,5,4
+Meghalaya,North-East,0.0,31,6,4
+Himachal Pradesh,North,0.0,32,8,4

@@ -1,42 +1,32 @@
 -- =============================================================================
--- 02_views.sql  |  Reusable views on top of the star schema
+-- 02_views.sql  |  Reusable view on top of the model
 -- =============================================================================
 
--- Daily prices with stock attributes and calendar fields: the start of most queries.
-CREATE VIEW vw_daily AS
+-- State-year facts with the state attributes most queries need.
+CREATE VIEW vw_state_year AS
 SELECT
-    p.date,
-    d.year,
-    d.month_number,
-    d.month_name,
-    d.year_month,
-    p.symbol,
-    s.sector,
-    p.open, p.high, p.low, p.close, p.adj_close,
-    p.volume,
-    p.turnover_cr,
-    p.ret_1d,
-    p.corporate_action
-FROM fact_daily_price p
-JOIN dim_stock s ON s.symbol = p.symbol
-JOIN dim_date  d ON d.date   = p.date;
-
--- Moving averages and 52-week range per stock, computed with window frames.
--- 252 trading days is about one year.
-CREATE VIEW vw_technical AS
-SELECT
-    date,
-    symbol,
-    sector,
-    close,
-    adj_close,
-    volume,
-    ret_1d,
-    COUNT(*)        OVER w200 AS days_of_history,
-    AVG(adj_close)  OVER (PARTITION BY symbol ORDER BY date ROWS BETWEEN 49 PRECEDING AND CURRENT ROW)  AS sma_50,
-    AVG(adj_close)  OVER w200 AS sma_200,
-    AVG(volume)     OVER (PARTITION BY symbol ORDER BY date ROWS BETWEEN 19 PRECEDING AND CURRENT ROW)  AS avg_volume_20d,
-    MAX(adj_close)  OVER (PARTITION BY symbol ORDER BY date ROWS BETWEEN 251 PRECEDING AND CURRENT ROW) AS high_52w,
-    MIN(adj_close)  OVER (PARTITION BY symbol ORDER BY date ROWS BETWEEN 251 PRECEDING AND CURRENT ROW) AS low_52w
-FROM vw_daily
-WINDOW w200 AS (PARTITION BY symbol ORDER BY date ROWS BETWEEN 199 PRECEDING AND CURRENT ROW);
+    f.state,
+    s.state_code,
+    s.region,
+    s.is_union_territory,
+    s.pds_mode,
+    s.migration_role,
+    s.migrants_in,
+    s.migrants_out,
+    f.year,
+    f.beneficiaries,
+    f.portability_txn,
+    f.interstate_txn,
+    f.intrastate_txn,
+    f.interstate_share_pct,
+    f.portability_per_100_beneficiaries,
+    f.interstate_per_100k_beneficiaries,
+    f.distribution_mt,
+    f.kg_per_beneficiary_month,
+    f.deleted_cards,
+    f.deleted_per_1000_beneficiaries,
+    f.portability_growth_pct,
+    f.is_onboarding_jump,
+    f.interstate_exceeds_total
+FROM fact_state_year f
+JOIN dim_state s ON s.state = f.state;

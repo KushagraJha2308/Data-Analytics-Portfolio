@@ -1,0 +1,4 @@
+﻿migration_role,states,portability_txn_mn,txn_per_100_beneficiaries,interstate_txn_mn,interstate_share_pct
+Origin,13,266.3,50.1,0.68,0.26
+Destination,18,129.5,49.1,8.21,6.34
+Balanced,1,0.0,76.0,,

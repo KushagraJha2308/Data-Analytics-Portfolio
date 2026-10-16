@@ -1,12 +1,13 @@
 ﻿check_name,severity,offending_rows,note
-fact_duplicate_key,FAIL,0,More than one row for a title in a period
-fact_orphan_title,FAIL,0,Fact rows whose title_id is missing from dim_title
-dim_title_duplicate_natural_key,FAIL,0,content_type + title + release_date should be unique
-release_after_period_end,FAIL,0,A title cannot be watched before it is released
-new_release_days_out_of_range,FAIL,0,days_available must be between 1 and the length of the period
-views_below_reporting_threshold,FAIL,0,Netflix only lists titles that round to at least 100K views
-runtime_not_reported,WARN,537,Runtime published as * (mostly titles still releasing episodes)
-release_date_missing,WARN,32783,No Netflix premiere date: treated as licensed content
-views_formula_mismatch_over_10pct,WARN,2,views differs from hours / runtime by more than 10% (titles with 1M+ views)
-global_flag_changed_between_periods,WARN,158,Titles whose Available Globally flag differs across reports
-show_without_season_number,WARN,1782,Show titles where no season could be parsed from the title text
+duplicate_state_year,FAIL,0,More than one row for a state in a year
+fact_without_state,FAIL,0,Fact rows whose state is missing from dim_state
+published_total_mismatch,FAIL,0,Sum of state rows differs from the published total by more than 0.01%
+beneficiary_split_mismatch,FAIL,0,AAY + PHH beneficiaries must equal the total
+migrants_in_out_not_balanced,FAIL,0,"Every migrant counted ""in"" somewhere is counted ""out"" somewhere else"
+interstate_exceeds_total,FAIL,0,Inter-state transactions cannot be more than all portability transactions
+rounding_gap_in_published_total,WARN,4,Published totals that differ from the sum of states by 1 to 3 units (rounding at source)
+onboarding_jump,WARN,3,"Year-on-year jump of 20x or more: a state joining the system, excluded from growth rates"
+interstate_equals_total,WARN,1,Inter-state count identical to the total: possible reporting artefact
+portability_not_reported,WARN,10,State-years from 2023 with no portability figure
+interstate_not_reported,WARN,8,State-years from 2024 with a portability figure but no inter-state figure
+collapse_in_reported_transactions,WARN,1,Transactions fell by more than 95% in a year: likely a reporting gap

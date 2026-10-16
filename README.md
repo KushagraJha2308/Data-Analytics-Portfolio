@@ -1,144 +1,126 @@
-# Can machine learning pick NSE stocks? An honest test
+# One Nation One Ration Card: who uses ration portability, and where is it missing?
 
-Ten years of daily prices for 54 large NSE stocks (139,039 rows), a SQL star schema, three
-machine-learning models with walk-forward validation, and a backtest with trading costs.
+A state-level analysis of India's ration portability scheme using eight official datasets
+from data.gov.in (2020–2026, 36 States/UTs, 396 million transactions in 2025).
 
-**Stack:** Python (pandas, scikit-learn, SciPy) · SQL (SQLite, window functions) · Machine learning (classification, clustering) · Power BI (DAX)
+**Stack:** Python (pandas, statsmodels, scikit-learn) · SQL (SQLite, window functions) · Machine learning (clustering)
 
 ## The question
 
-Using only price and volume history, can a model predict which stocks will beat the median
-stock over the next week, and does that survive trading costs?
-
-Most stock-prediction tutorials report 80–95% accuracy. This project shows where those
-numbers come from, removes the error, and reports what is left.
+Under One Nation One Ration Card (ONORC), a ration card works at any fair price shop in
+India, so a migrant worker can collect subsidised grain where they live. A *portability
+transaction* is a ration drawn away from the card's home shop, inside the state or in
+another state. **Is the scheme reaching the places where migrants actually are?**
 
 ## Key findings
 
-| # | Finding | Evidence |
+| # | Finding | So what |
 |---|---|---|
-| 1 | **The validation method matters more than the model.** The same model scores an AUC of 0.74 with a shuffled train/test split and 0.50 with a time-ordered split. | Leakage experiment, same data and model |
-| 2 | **There is a small edge, and it is not statistically significant.** Out-of-sample AUC is 0.51 for all three models over 2021–2026. | Walk-forward validation, 75,099 predictions |
-| 3 | **Before costs the strategy wins; after costs it does not.** 28.4% a year before costs vs 22.2% for the benchmark; 20.9% after costs. | Weekly top-10 backtest, 283 weeks |
-| 4 | **The edge is probably real but too small to trade weekly.** The model beats 96% of 1,000 random portfolios, but breaks even only if a trade costs under 0.08%. | Random-portfolio test, cost sensitivity |
-| 5 | **Simple models are enough.** Logistic regression (AUC 0.508) is almost as good as gradient boosting (0.510). | Model comparison |
-| 6 | **Momentum and trend carry the signal.** RSI, MACD and Bollinger bands add almost nothing out of sample. | Permutation importance on 2025–26 data |
-| 7 | **Sectors are only partly real.** Same-sector stocks correlate 0.49 vs 0.25 across sectors; Energy, Metals and Defense trade as one cyclical block. | Hierarchical clustering, adjusted Rand index 0.40 |
-| 8 | **The "golden cross" does not work here.** 60-day return after a golden cross is 4.96%, against 5.12% on an average day. | SQL query q04, 334 signals |
+| 1 | **Portability grew 52% in two years** (260M → 396M transactions). Excluding two states that only started reporting mid-period, real growth is **43%**. | Headline growth overstates adoption. Growth should be reported like-for-like. |
+| 2 | **It is almost entirely intra-state.** Only 2.2% of transactions happen in a different state. | ONORC is mainly used by people moving inside their own state, not by inter-state migrants. |
+| 3 | **Bihar alone is 33% of all transactions**; the top five states are 65%. | National averages describe a handful of states. |
+| 4 | **Inter-state use does follow migrants** (rank correlation 0.75, p < 0.001; elasticity 1.47 after controlling for state size). | The scheme works in the direction intended. |
+| 5 | **But Delhi handles 65% of all inter-state transactions**: about 110 per registered migrant, five times Maharashtra or Haryana. | One city-state is the working model; the rest lag. |
+| 6 | **Under-served destinations:** Uttar Pradesh records 636 inter-state transactions for 18,443 registered migrants; Tamil Nadu, Punjab and Gujarat are also far below expectation. Karnataka reports no figure. | These are where awareness, shop compliance or reporting should be checked first. |
+| 7 | **Three types of state** from k-means clustering: home-state users (15), destination hubs (8), and a reporting gap (Himachal Pradesh, Meghalaya). | Each type needs a different response. |
+| 8 | **Entitlement check:** 5.19 kg per beneficiary per month nationally, but 3.96 kg in Sikkim and 4.47 kg in Punjab. | Candidates for a delivery audit. |
 
 <p>
-  <img src="reports/figures/03_leakage_demo.png" width="49%">
-  <img src="reports/figures/05_equity_curve.png" width="49%">
+  <img src="reports/figures/03_interstate_vs_migrants.png" width="49%">
+  <img src="reports/figures/05_state_clusters.png" width="49%">
 </p>
 <p>
-  <img src="reports/figures/06_luck_and_costs.png" width="98%">
+  <img src="reports/figures/02_state_concentration.png" width="49%">
+  <img src="reports/figures/04_underserved_destinations.png" width="49%">
 </p>
 
-Full analysis: [`notebooks/nse_ml_analysis.ipynb`](notebooks/nse_ml_analysis.ipynb)
+Full analysis: [`notebooks/onorc_analysis.ipynb`](notebooks/onorc_analysis.ipynb)
 
-## Why a negative result is the result
+## Recommendations
 
-A model that "predicts stocks with 90% accuracy" is a bug, not a finding. The value of this
-project is the method: time-ordered validation, a purge gap between train and test, a
-balanced relative target, a fair benchmark, trading costs, a luck test, and no tuning on the
-test years. The conclusion a business can use: **turnover, not prediction, is the binding
-problem.** A slower strategy or non-price data is the next step, not a bigger model.
+1. **Target under-served destinations first**: Uttar Pradesh, Tamil Nadu, Punjab, Gujarat.
+2. **Fix reporting before measuring**: Karnataka and Arunachal Pradesh publish no inter-state figure; Himachal Pradesh fell from 117,699 transactions to 31 in a year.
+3. **Study Delhi as the working model.**
+4. **Report growth like-for-like**, excluding states that join mid-period.
+5. **Audit entitlement delivery** in Sikkim and Punjab.
 
 ## How it works
 
 ```
-project brief ──► universe (54 stocks) ──► download ──► clean ──► features ──► star schema ──► SQL analysis
- (2-day sample)    + ticker mapping        10 years     validate   17 signals   SQLite + CSV └► ML: walk-forward ► backtest
+8 CSV files (data.gov.in) ──► extract ──► conform state names ──► reconcile to published totals ──► model ──► SQL ──► notebook
+   different layouts          long format   alias table            24 totals checked              SQLite     11 queries   stats + clustering
 ```
 
-**About the data.** The brief was a two-day sample table for these stocks. Two days cannot
-train a model, and one of the two (2 October) is a market holiday, so the brief was used as
-the specification and filled with real price history from Yahoo Finance.
+**Data model:** `dim_state` (36 rows, with region and 2026 snapshot attributes) and
+`fact_state_year` (200 rows: one per State/UT per year, 2020–2025).
+
+### The data
+
+The catalog this project started from,
+[One Nation One Ration Card (ONORC) Plan](https://data.gov.in/catalog/one-nation-one-ration-card-onorc-plan),
+holds one table: monthly inter-state transactions for 2022–23. When this was built the
+data.gov.in API server was refusing connections, so that file could not be downloaded. The
+project uses eight newer tables from the same portal instead, all published as answers to
+questions in Parliament. Sources and resource IDs are in
+[`data/reference/source_manifest.csv`](data/reference/source_manifest.csv).
+
+| Table | Period |
+|---|---|
+| Portability transactions under NFSA | 2023–2025 |
+| Inter-state portability transactions under ONORC | 2024–2025 |
+| NFSA beneficiaries and foodgrain distributed | 2023–2025 |
+| NFSA beneficiaries by category (AAY, PHH) | March 2026 |
+| Ration cards deleted (three separate sources) | 2020–2025 |
+| Urban migrant workers on eShram, by state of work and state of origin | January 2026 |
+| Unorganised workers registered on eShram | 2025–2026 |
+| Transit losses of foodgrain | April–December 2025 |
 
 ### Data cleaning
 
 | Issue | Treatment |
 |---|---|
-| 3 tickers in the brief no longer exist (TATAMOTORS, ZOMATO, LTIM) | Mapping table: brief symbol → current ticker |
-| 653 placeholder rows on market holidays | Removed; the NIFTY 50 calendar defines a trading day |
-| 2 demergers left unadjusted by the provider (fake crashes of -40% and -65%) | Earlier prices back-adjusted, logged in `corporate_actions.csv` |
-| 4 stocks listed after 2016 | Kept from their real listing date, never back-filled |
-| 18 genuine moves above 25% (COVID crash, bank recapitalisation) | Kept: they happened |
-| Splits and dividends | All returns use the adjusted close |
+| "Total" rows inside the data | Separated and used as a check: states must add up to the published total (24 totals, largest gap 3 in 396 million) |
+| Misspelt state name ("Dadar and Nagar Haveli…") | Alias table maps every spelling to one master name; an unknown name stops the pipeline |
+| A row that is not a state ("NEF Shillong", an FCI office) | Excluded and logged |
+| Three sources for deleted ration cards | Cross-checked on 277 overlapping state-years: zero conflicts |
+| States joining the system mid-period (20× jump) | Flagged and excluded from growth rates |
+| Missing values | Kept as missing, never filled with zero |
+| No grain data for Chandigarh and Puducherry | Expected: they pay cash instead of grain |
 
-**Trust in the numbers.** 13 SQL data-quality checks run after each load (7 hard failures,
-6 monitored warnings). 8 unit tests cover the rules the results depend on, including a test
-that changing future prices cannot change any feature today (no look-ahead), and a test that
-the walk-forward split never trains on the future.
+**Trust in the numbers.** 12 SQL data-quality checks run after each load (6 hard failures,
+6 monitored warnings) and 11 unit tests cover the cleaning rules.
 
 ### SQL
 
-[`sql/04_market_analysis.sql`](sql/04_market_analysis.sql) answers 12 questions: sector
-returns by year, drawdowns, market breadth, seasonality, volume spikes, winning streaks,
-beta, and the model's hit rate by year. Techniques: CTEs, window frames for moving averages
-and 52-week ranges, `LAG` / `LEAD`, `LAST_VALUE`, running maximum for drawdown,
-gaps-and-islands for streaks, and beta computed from plain averages.
+[`sql/04_policy_analysis.sql`](sql/04_policy_analysis.sql) answers 11 questions using CTEs,
+`LAG` for year-on-year growth, running totals for concentration, `RANK` and `NTILE` within
+regions, share-of-total with `SUM() OVER ()`, a moving average, self-joins and `NOT EXISTS`.
 
-### Machine learning
+### Statistics and machine learning
 
-- **Target:** will the stock beat the median stock over the next 5 trading days? Balanced by
-  construction, and independent of market direction.
-- **Features:** 17 signals (momentum, volatility, volume, RSI, MACD, Bollinger position,
-  52-week range, trend, sector-relative strength, market regime), ranked across stocks each day.
-- **Models:** logistic regression, random forest, gradient boosting.
-- **Validation:** walk-forward by year from 2021, 5-day purge gap, hyperparameters fixed in advance.
-- **Unsupervised:** hierarchical clustering on return correlations, compared with sectors.
+- Spearman rank correlation and a log-log regression with robust standard errors, controlling for state size.
+- A gap analysis: actual inter-state transactions against the level the migrant count predicts.
+- K-means clustering on three behaviour indicators, with the number of clusters chosen by silhouette score.
 
 ## Run it
 
 ```bash
 pip install -r requirements.txt
-python run_pipeline.py      # raw prices -> clean star schema + features (uses cached raw data)
-python run_model.py         # walk-forward training and backtest (about 10 minutes)
-python run_sql.py           # data-quality checks + 12 market queries
-python -m pytest            # 8 unit tests
-jupyter notebook notebooks/nse_ml_analysis.ipynb
+python run_pipeline.py      # raw files -> validated model (SQLite + CSV)
+python run_sql.py           # data-quality checks + 11 policy queries
+python -m pytest            # 11 unit tests
+jupyter notebook notebooks/onorc_analysis.ipynb
 ```
-
-### Power BI
-
-Open [`powerbi/NseStockML.pbip`](powerbi/NseStockML.pbip) in Power BI Desktop. Four pages:
-Market, Risk and signals, AI model, Strategy backtest. The model pages show the leakage
-comparison, AUC by year for the three models, feature importance, the backtest growth curve,
-cost sensitivity and the model's latest ranking. Run `python run_dashboard_data.py` to
-rebuild the result tables it reads. Details: [`powerbi/DASHBOARD_GUIDE.md`](powerbi/DASHBOARD_GUIDE.md).
-
-A PDF version of the same four pages, built from the same tables by `run_dashboard_pdf.py`:
-[`reports/NSE_Stock_ML_Dashboard.pdf`](reports/NSE_Stock_ML_Dashboard.pdf)
-
-<p>
-  <img src="reports/dashboard_pages/3_ai_model.png" width="49%">
-  <img src="reports/dashboard_pages/4_strategy_backtest.png" width="49%">
-</p>
 
 ## Limitations
 
-- **Survivorship bias.** The 54 stocks are today's large companies. Firms that shrank or
-  were delisted are missing, so every return here, strategy and benchmark, is higher than
-  an investor could have earned.
-- **One free data provider.** Two corporate actions needed manual correction; others may remain.
-- **Flat cost assumption** of 0.10% per trade; real costs depend on order size and liquidity.
-- **Sensitive to the rebalance day.** Shifting the weekly schedule by one day changes annual
-  returns by about a percentage point.
-- This is an analysis project, not investment advice.
+- **State-level, yearly data.** No district, shop or household detail.
+- **26 to 36 observations.** Correlations are indicative and confidence intervals are wide.
+- **eShram migrants are registered urban workers only** (about 305,000 people), a small share of all migrants.
+- **Reporting changes drive some numbers.** Large jumps and collapses are flagged; smaller ones cannot be seen.
+- **Associations, not causes.** The data cannot say why usage is low in a state.
 
-## Data not included in this repository
-
-Daily prices come from Yahoo Finance, whose terms do not allow the data to be republished, so the raw prices and the large derived tables are not committed. Rebuild them locally:
-
-```bash
-python run_pipeline.py --refresh   # downloads prices for 2016-01-01 to 2026-10-01
-python run_model.py
-python run_sql.py
-python run_dashboard_data.py
-```
-
-The provider revises history from time to time, so a fresh download can differ slightly from the numbers in this README. The result tables in `reports/` are the ones the analysis reports.
+Independent analysis of public data; not affiliated with the Government of India.
 
 ## Author
 

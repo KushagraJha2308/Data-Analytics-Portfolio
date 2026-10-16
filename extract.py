@@ -1,10 +1,11 @@
-"""Extract: download daily prices for the stock universe and cache them as raw CSV.
+"""Extract: read the raw data.gov.in files into one long table.
 
-The raw files are the single source for everything downstream. They are only
-re-downloaded when asked (run_pipeline.py --refresh), so the analysis is
-reproducible even though the data provider revises history over time.
+Every source is a small table published as an answer to a question in Parliament.
+The layouts differ (column names, a serial-number column, a total row at the bottom),
+so each file is reshaped to the same long format:  state_raw | year | metric | value.
 """
 import logging
+import re
 
 import pandas as pd
 
@@ -12,42 +13,57 @@ from . import config
 
 log = logging.getLogger(__name__)
 
-PRICE_COLUMNS = {"Open": "open", "High": "high", "Low": "low", "Close": "close",
-                 "Adj Close": "adj_close", "Volume": "volume"}
+STATE_COLUMN = re.compile(r"^state\s*/\s*uts?$", re.IGNORECASE)
 
 
-def load_universe() -> pd.DataFrame:
-    return pd.read_csv(config.UNIVERSE_FILE)
+def read_source(file_name: str) -> pd.DataFrame:
+    """Read one raw file and return it with a single, consistently named state column."""
+    df = pd.read_csv(config.RAW_DIR / file_name)
+    df.columns = [c.strip() for c in df.columns]
+    state_cols = [c for c in df.columns if STATE_COLUMN.match(c)]
+    if len(state_cols) != 1:
+        raise ValueError(f"{file_name}: expected exactly one State/UT column, found {state_cols}")
+    return df.rename(columns={state_cols[0]: "state_raw"})
 
 
-def _download(tickers: list) -> pd.DataFrame:
-    import yfinance as yf          # imported here so the rest of the project runs offline
+def to_long(df: pd.DataFrame, mapping: dict, file_name: str) -> pd.DataFrame:
+    missing = [c for c in mapping if c not in df.columns]
+    if missing:
+        raise ValueError(f"{file_name}: expected columns not found: {missing}")
+    long = df.melt(id_vars="state_raw", value_vars=list(mapping), var_name="raw_column", value_name="value")
+    long["value"] = pd.to_numeric(long["value"], errors="coerce")
+    long["source_file"] = file_name
+    return long
 
-    end = pd.Timestamp(config.END_DATE) + pd.Timedelta(days=1)      # yfinance end is exclusive
-    wide = yf.download(tickers, start=config.START_DATE, end=end.strftime("%Y-%m-%d"),
-                       auto_adjust=False, progress=False, group_by="ticker", threads=False)
+
+def extract_yearly() -> pd.DataFrame:
     frames = []
-    for ticker in tickers:
-        df = wide[ticker].rename(columns=PRICE_COLUMNS)[list(PRICE_COLUMNS.values())]
-        df = df.dropna(how="all").reset_index().rename(columns={"Date": "date"})
-        df.insert(1, "yahoo_ticker", ticker)
-        frames.append(df)
-        if df.empty:
-            log.warning("No data returned for %s", ticker)
+    for file_name, mapping in config.YEARLY_SOURCES.items():
+        long = to_long(read_source(file_name), mapping, file_name)
+        long["year"] = long["raw_column"].map(lambda c: mapping[c][0])
+        long["metric"] = long["raw_column"].map(lambda c: mapping[c][1])
+        frames.append(long.drop(columns="raw_column"))
+        log.info("%-48s %4d values", file_name, len(long))
     return pd.concat(frames, ignore_index=True)
 
 
-def extract(refresh: bool = False) -> tuple:
-    """Return (stock prices, index prices) in long format, downloading if needed."""
-    config.RAW_DIR.mkdir(parents=True, exist_ok=True)
-    if refresh or not config.RAW_PRICES_FILE.exists():
-        universe = load_universe()
-        log.info("Downloading %d stocks and the index, %s to %s",
-                 len(universe), config.START_DATE, config.END_DATE)
-        _download(universe["yahoo_ticker"].tolist()).to_csv(config.RAW_PRICES_FILE, index=False)
-        _download([config.INDEX_TICKER]).to_csv(config.RAW_INDEX_FILE, index=False)
+def extract_snapshot() -> pd.DataFrame:
+    frames = []
+    for file_name, mapping in config.SNAPSHOT_SOURCES.items():
+        long = to_long(read_source(file_name), mapping, file_name)
+        long["metric"] = long["raw_column"].map(mapping)
+        frames.append(long.drop(columns="raw_column"))
+        log.info("%-48s %4d values", file_name, len(long))
+    return pd.concat(frames, ignore_index=True)
 
-    prices = pd.read_csv(config.RAW_PRICES_FILE, parse_dates=["date"])
-    index = pd.read_csv(config.RAW_INDEX_FILE, parse_dates=["date"])
-    log.info("Raw data: %d stock rows, %d index rows", len(prices), len(index))
-    return prices, index
+
+def extract_deleted_cross_checks() -> pd.DataFrame:
+    """The two shorter deleted-ration-card series, used only to verify the main one."""
+    frames = []
+    for file_name in config.DELETED_CARDS_CROSS_CHECK:
+        df = read_source(file_name)
+        years = {c: (int(c), "deleted_cards") for c in df.columns if c.isdigit()}
+        long = to_long(df, years, file_name)
+        long["year"] = long["raw_column"].astype(int)
+        frames.append(long.drop(columns="raw_column"))
+    return pd.concat(frames, ignore_index=True)

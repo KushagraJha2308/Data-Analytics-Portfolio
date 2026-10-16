@@ -1,10 +1,10 @@
 # Project description
 
-**NSE Stock Selection with Machine Learning**
+**One Nation One Ration Card: Portability Analysis**
 
-Built a machine-learning pipeline on 10 years of prices for 54 NSE stocks (139,000 rows), with 17 engineered features, 3 classifiers and walk-forward validation. Showed that a shuffled split inflates AUC from 0.50 to 0.74 through data leakage. Backtest: 28.4% a year before costs against a 22.2% benchmark, and 20.9% after costs.
+Combined 8 Government of India datasets (36 States/UTs) into a SQL model and reconciled all 24 published totals. Using SQL, regression and k-means clustering, found that portability grew 52% in two years (43% like-for-like), inter-state use tracks migrant workers (correlation 0.75), and identified under-served states such as Uttar Pradesh.
 
-**Skills Demonstrated:** Python, scikit-learn, SQL, Feature Engineering, Power BI
+**Skills Demonstrated:** SQL, Python, scikit-learn (K-Means), Regression Analysis, Data Cleaning
 
 ---
 
@@ -12,5 +12,5 @@ Built a machine-learning pipeline on 10 years of prices for 54 NSE stocks (139,0
 
 Paste into the repository page: gear icon next to **About**.
 
-- **Description:** Machine learning on 10 years of NSE stock prices: 17 engineered features, walk-forward validation, data-leakage test and a cost-aware backtest.
-- **Topics:** machine-learning, scikit-learn, python, sql, finance, backtesting, power-bi
+- **Description:** One Nation One Ration Card analysis on Government of India open data: SQL model, regression, k-means clustering across 36 States/UTs.
+- **Topics:** data-analysis, public-policy, sql, python, clustering, open-data, india

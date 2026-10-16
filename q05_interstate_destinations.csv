@@ -1,0 +1,16 @@
+﻿state,migration_role,interstate_txn_thousand,share_of_interstate_pct,migrants_in,share_of_migrants_in_pct,interstate_txn_per_migrant
+Delhi,Destination,5811.9,65.4,52998,19.1,109.7
+Haryana,Destination,933.6,10.5,41615,15.0,22.4
+Maharashtra,Destination,874.6,9.8,51228,18.5,17.1
+Rajasthan,Origin,235.5,2.6,6700,2.4,35.1
+Gujarat,Destination,211.3,2.4,37066,13.4,5.7
+Uttarakhand,Origin,185.6,2.1,7564,2.7,24.5
+Dadra and Nagar Haveli and Daman and Diu,Destination,103.0,1.2,1872,0.7,55.0
+Bihar,Origin,84.7,1.0,5051,1.8,16.8
+Jammu and Kashmir,Destination,81.3,0.9,3361,1.2,24.2
+West Bengal,Origin,75.0,0.8,6415,2.3,11.7
+Telangana,Destination,71.0,0.8,6858,2.5,10.4
+Madhya Pradesh,Origin,58.4,0.7,5147,1.9,11.3
+Punjab,Destination,47.1,0.5,14134,5.1,3.3
+Kerala,Destination,38.3,0.4,1295,0.5,29.5
+Goa,Destination,30.1,0.3,1229,0.4,24.5
